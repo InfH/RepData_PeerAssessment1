@@ -50,21 +50,21 @@ missing <- sum(is.na(df)) # is.na returns T, or 1, for each missing value
 ```
 The total number of missing values is `r missing`. Let's try to impute the missing data.
 ```{r}
-library(impute)
+# Let's replace missing data by the mean for that interval
+# First, recast data in wide form
+df_reshape <- reshape(df, timevar="interval",idvar="date", direction="wide")
+rownames(df_reshape) <- df_reshape$date; df_reshape[1] <- NULL
+colnames(df_reshape) <- sapply(colnames(df_reshape),function(x) strsplit(x,"[.]")[[1]][2])
 
-# Let's take advantage of impute.knn. In this case, each "gene" is a date, and each "sample" is the interval.
-df_reshape <- reshape(df, timevar="interval",idvar="date", direction="wide") # recast data in wide form
-df_steps <- impute.knn(as.matrix(df_reshape)[,-1],  k=10) # impute
-df_steps <- data.frame(date=df_reshape$date, df_steps$data) # reformat in wide with date as first column
+# Now look up missing values by the column name
+missing <- which(is.na(df_reshape), arr.ind=TRUE)
+df_reshape[missing] <- mean_pattern[missing[,2]] # replace by mean steps in that interval
 
-df_steps_melt <- reshape(df_steps, varying=colnames(df_steps)[-1], v.names="steps", timevar="interval",times=as.numeric(sapply(colnames(df_steps[-1]),function(x) strsplit(x,"[.]")[[1]][2])),direction="long") # recast to long form
-
-
-total_steps <- tapply(as.numeric(df_steps_melt$steps), df_steps_melt$date,sum)
+total_steps <- rowSums(df_reshape) # total steps for each day
 mean_steps <- mean(total_steps)
 hist(total_steps, main="Total number of steps taken per day with imputed values")
 ```
-Using the imputed data, the mean number of steps taken per day is `r format(mean_steps, scientific=F)` steps and the median is `r format(median(total_steps), scientific=F)` steps. This is significantly different from the non-imputed data.
+Using the imputed data, the mean number of steps taken per day is `r format(mean_steps, scientific=F)` steps and the median is `r format(median(total_steps), scientific=F)` steps. This is not significantly different from the non-imputed data.
 
 
 

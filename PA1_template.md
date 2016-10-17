@@ -100,31 +100,23 @@ missing <- sum(is.na(df)) # is.na returns T, or 1, for each missing value
 The total number of missing values is 2304. Let's try to impute the missing data.
 
 ```r
-library(impute)
+# Let's replace missing data by the mean for that interval
+# First, recast data in wide form
+df_reshape <- reshape(df, timevar="interval",idvar="date", direction="wide")
+rownames(df_reshape) <- df_reshape$date; df_reshape[1] <- NULL
+colnames(df_reshape) <- sapply(colnames(df_reshape),function(x) strsplit(x,"[.]")[[1]][2])
 
-# Let's take advantage of impute.knn. In this case, each "gene" is a date, and each "sample" is the interval.
-df_reshape <- reshape(df, timevar="interval",idvar="date", direction="wide") # recast data in wide form
-df_steps <- impute.knn(as.matrix(df_reshape)[,-1],  k=10) # impute
-```
+# Now look up missing values by the column name
+missing <- which(is.na(df_reshape), arr.ind=TRUE)
+df_reshape[missing] <- mean_pattern[missing[,2]] # replace by mean steps in that interval
 
-```
-## Warning in knnimp(x, k, maxmiss = rowmax, maxp = maxp): 8 rows with more than 50 % entries missing;
-##  mean imputation used for these rows
-```
-
-```r
-df_steps <- data.frame(date=df_reshape$date, df_steps$data) # reformat in wide with date as first column
-
-df_steps_melt <- reshape(df_steps, varying=colnames(df_steps)[-1], v.names="steps", timevar="interval",times=as.numeric(sapply(colnames(df_steps[-1]),function(x) strsplit(x,"[.]")[[1]][2])),direction="long") # recast to long form
-
-
-total_steps <- tapply(as.numeric(df_steps_melt$steps), df_steps_melt$date,sum)
+total_steps <- rowSums(df_reshape) # total steps for each day
 mean_steps <- mean(total_steps)
 hist(total_steps, main="Total number of steps taken per day with imputed values")
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
-Using the imputed data, the mean number of steps taken per day is 30922.08 steps and the median is 16953 steps. This is significantly different from the non-imputed data.
+Using the imputed data, the mean number of steps taken per day is 10766.19 steps and the median is 10766.19 steps. This is significantly different from the non-imputed data.
 
 
 
